@@ -1,0 +1,26 @@
+{
+    "tasks": [
+        {
+            // 清空编译
+            "type": "shell",
+            "label": "rebuild",
+            "command": "cd build; rm -rf *; cmake .. ; make",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }, 
+               
+        },
+        {
+            // 增量编译 
+            "type": "shell",
+            "label": "build",
+            "command": "cd build; make",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }, 
+        }
+    ],
+    "version": "2.0.0"
+ }

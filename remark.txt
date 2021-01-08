@@ -1,0 +1,2 @@
+20201127:
+sm4_bs256 ecb & ctr mode pass!gcm encrypto pass gcm auth didn't support
