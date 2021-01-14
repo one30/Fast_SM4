@@ -1,3 +1,11 @@
+/*
+ * @Descripttion : 
+ * @Version      : 
+ * @Autor        : one30
+ * @Date         : 2020-11-11 21:52:20
+ * @LastEditTime : 2021-01-14 16:30:26
+ * @FilePath     : /include/sm4_bs256.h
+ */
 #include <stdio.h>
 #include <stdint.h>	
 #include <string.h>

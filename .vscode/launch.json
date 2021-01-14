@@ -8,7 +8,7 @@
             "name": "gcc-10 - 生成和调试活动文件",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/bitslice",
+            "program": "${workspaceFolder}/bin/SM4-AVX2-bitslice",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

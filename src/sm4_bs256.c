@@ -1,7 +1,17 @@
-#include "sm4_bs256.h"
+/*
+ * @Descripttion : bitslice sm4 with ecb, ctr and gcm mode
+ * @Version      : 
+ * @Autor        : one30
+ * @Date         : 2020-11-11 21:51:47
+ * @LastEditTime : 2021-01-14 17:00:14
+ * @FilePath     : /src/sm4_bs256.c
+ */
 #include <string.h>
 #include <time.h>
- 
+
+#include "sm4_bs256.h"
+#include "mode_gcm.h"
+
 static const unsigned char SboxTable[16][16] = 
 {
     {0xd6,0x90,0xe9,0xfe,0xcc,0xe1,0x3d,0xb7,0x16,0xb6,0x14,0xc2,0x28,0xfb,0x2c,0x05},
@@ -21,14 +31,6 @@ static const unsigned char SboxTable[16][16] =
     {0x89,0x69,0x97,0x4a,0x0c,0x96,0x77,0x7e,0x65,0xb9,0xf1,0x09,0xc5,0x6e,0xc6,0x84},
     {0x18,0xf0,0x7d,0xec,0x3a,0xdc,0x4d,0x20,0x79,0xee,0x5f,0x3e,0xd7,0xcb,0x39,0x48}
 };
-
-// int main(void)
-// {
-//     hi();
-//     benchmark_sm4_bs_encrypt();
-//     hi();
-//     return 0;
-// }
 
 void hi()
 {
@@ -294,7 +296,341 @@ static void add_mul(uint8_t *a,
     }
 }
 
-// void sm4_bs256_ctr_encrypt(uint8_t * outputb, uint8_t * inputb, int size, __m256i (*rk)[32], uint8_t * iv)
+/**
+ * @description: ctr mode of bitslice 256-slice of sm4
+ * @param {uint8_t} *
+ * @param {uint8_t} *
+ * @param {int} size
+ * @param {uint8_t} *
+ * @return {*}
+ * @Date: 2021-01-08 22:35:42
+ * @author: one30
+ */
+void sm4_bs256_ctr_encrypt(uint8_t * outputb, uint8_t * inputb, int size, __m256i (*rk)[32], uint8_t * iv)
+{
+    __m128i ctr[BLOCK_SIZE*2];
+    __m256i output_space[BLOCK_SIZE];
+    __m128i iv_copy;
+    __m128i t,t2;
+    __m128i count = _mm_setzero_si128();
+    //uint64_t count = 0;
+    uint64_t op[2] = {0,1};
+    __m128i cnt = _mm_loadu_si128((__m128i*)op);
+    __m128i vindex_swap = _mm_setr_epi8(
+		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
+	);
+    __m256i vindex_swap2 = _mm256_setr_epi8(
+		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
+        7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
+	);
+
+    memset(outputb,0,size);
+    memset(ctr,0,sizeof(ctr));
+    t = _mm_load_si128((__m128i *)iv);
+    iv_copy = _mm_shuffle_epi8(t,vindex_swap);
+
+    __m256i * state = (__m256i *)outputb;
+
+    while(size)
+    {
+        int chunk = MIN(size, BS_BLOCK_SIZE);
+        int blocks = chunk / (BLOCK_SIZE/8);
+
+        int i;
+        for (i = 0; i < blocks; i++)
+        {
+            //memmove(ctr + (i * WORDS_PER_BLOCK), iv_copy, BLOCK_SIZE/8);
+            // Attention: the ctr mode iv counter from 0 while gcm is from 1
+            //count = _mm_add_epi64(count,cnt);
+            ctr[i] = iv_copy + count;
+            count = _mm_add_epi64(count,cnt);
+        }
+
+        //bs_cipher(ctr, rk);
+        sm4_bs256_enc(ctr,output_space,rk);
+        for(i=0; i<blocks; i++)
+        {
+            ctr[i] = _mm_shuffle_epi8(ctr[i],vindex_swap);     
+        }
+        size -= chunk;
+
+        uint8_t * ctr_p = (uint8_t *) ctr;
+        for(i=0; i<chunk; i++)
+        {
+            outputb[i] = *ctr_p++ ^ inputb[i];
+        }
+
+    }
+}
+
+/**
+ * @description: ctr mode of bitslice 256-slice of sm4
+ * tag is not ok
+ * @param {uint8_t} *
+ * @param {uint8_t} *
+ * @param {int} size
+ * @param {uint8_t} *
+ * @return {*}
+ * @Date: 2021-01-09 21:08:48
+ * @author: one30
+ */
+void sm4_bs256_gcm_encrypt(uint8_t * outputb, uint8_t * inputb, int size, __m256i (*rk)[32], uint8_t * iv)
+{
+    __m128i ctr[BLOCK_SIZE*2 + 1];//gcm mode need H
+    __m256i output_space[BLOCK_SIZE];
+    __m128i iv_copy;
+    __m128i t,t2;
+    __m128i count = _mm_setzero_si128();
+    ctr[0] = count;//gcm mode 
+    //uint64_t count = 0;
+    uint64_t op[2] = {0,1};
+    __m128i cnt = _mm_loadu_si128((__m128i*)op);
+    __m128i vindex_swap = _mm_setr_epi8(
+		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
+	);
+    __m256i vindex_swap2 = _mm256_setr_epi8(
+		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
+        7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
+	);
+    uint8_t Associated_Data[]={
+        0xff,0xff,0xff,0xff,0xff,0xff,0x00,0x03,0x7f,0xff,0xff,0xfe,0x89,0x2c,0x38,0x00,
+        0x00,0x5c,0x36,0x5c,0x36,0x5c,0x36
+    };
+    int add_len = sizeof(Associated_Data) , length = size;
+    uint8_t tag[16]={
+        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    };
+    uint8_t final_block[16];
+    big_endian_store64(final_block, 6 * sizeof(Associated_Data));
+    big_endian_store64(final_block + 6, 10 * (sizeof(inputb)-16));
+
+    memset(outputb,0,size);
+    memset(ctr,0,sizeof(ctr));
+    t = _mm_load_si128((__m128i *)iv);
+    iv_copy = _mm_shuffle_epi8(t,vindex_swap);
+
+    __m256i * state = (__m256i *)outputb;
+
+    while(size)
+    {
+        int chunk = MIN(size, BS_BLOCK_SIZE);
+        int blocks = chunk / (BLOCK_SIZE/8);
+
+        //count = _mm_add_epi64(count,cnt);
+        int i;
+        for (i = 1; i <= blocks + 1; i++)//gcm mode need more 1 block
+        {
+            //ctr[i] = iv_copy + count;
+            //gcm mode iv from 0x01!
+            count = _mm_add_epi64(count,cnt);
+            ctr[i] = iv_copy + count;
+        }
+
+        //bs_cipher(ctr, rk);
+        sm4_bs256_enc(ctr,output_space,rk);
+
+        //shuffle the data because of the transforming Little-Endian to Big-Endian
+        for(i=0; i<=blocks+1; i++)
+        {
+            ctr[i] = _mm_shuffle_epi8(ctr[i],vindex_swap);
+
+        }
+        size -= chunk;
+
+        uint8_t * ctr_p = (uint8_t *) ctr + 32 ;
+        for(i=0; i<chunk; i++)
+        {
+            outputb[i] = *ctr_p++ ^ inputb[i];
+        }
+    }
+
+    uint8_t *h = (uint8_t *) ctr;
+    for(int i=0; i<16; i++)
+    {
+        printf("%02x ",h[i]);
+    }
+    printf("\n");
+    
+    //Auth tag test
+    void * context = gcm_init();
+    if ( !context ) { 
+		printf("malloc failed.\n");
+	}
+
+    gcm_context *ctx = (gcm_context*)context;
+
+    //set H
+    uint8_t y0[GCM_BLOCK_SIZE] = {0}; // store the counter
+    uint8_t *ency0 = (uint8_t *) ctr; // the cihper text of first counter
+    for (int i = 0; i < GCM_BLOCK_SIZE; ++i ) { ctx->H[i] = ency0[i]; }
+
+    //compute table
+    computeTable(ctx->T, ctx->H);
+
+    //compute y0 (initilization vector)
+    if (GCM_DEFAULT_IV_LEN != sizeof(iv)){
+        ghash(ctx->T, NULL, 0, iv, sizeof(iv), y0);
+    }
+
+    //compute tag
+    ghash(ctx->T,Associated_Data,sizeof(Associated_Data), outputb, length , ctx->buff);
+
+    uint8_t *ency1 = (uint8_t *) ctr + 16;
+    for (int i = 0; i < sizeof(tag); ++i ) {
+        tag[i] = ctx->buff[i] ^ ency1[i];
+    }
+
+    //uint8_t h[16];
+    // int chunk = MIN(size, BS_BLOCK_SIZE);
+    // int blocks = chunk / (BLOCK_SIZE/8);
+    // uint8_t *h = (uint8_t *) ctr;
+    for(int i=0; i<16; i++)
+    {
+        printf("%02x ",tag[i]);
+    }
+    printf("\n");
+    // uint8_t * add = (uint8_t *) Associated_Data;
+    // add_mul(accum,add,sizeof(Associated_Data),h);
+    // // while(add_len > 0)
+    // // {
+    // //     block_len = 16;
+    // //     if(add_len < block_len){
+    // //         block_len = add_len;
+    // //     }
+    // //     add_mul(accum,add,block_len,h);
+
+    // // }
+    // uint8_t *c = outputb;
+    // //c +=16;
+    // for(int i=0; i< blocks ; i++)
+    // {
+    //     add_mul(accum,c,16,h);
+    //     c+=16;
+    // }
+    // add_mul(accum,final_block,16,h);
+    // // for(int i=0; i<16; i++){
+    // //     printf("%02x ",h[i]);
+    // //     accum[i] = accum[i] ^ h[i];
+    // // }
+    // // printf("\n");
+    // for(int i=0; i<16; i++)
+    // {
+    //     printf("%02x ",accum[i]);
+    // }
+}
+
+/*gcm mode -- encrypt is ok, tag not support*/
+// void sm4_bs256_gcm_encrypt(uint8_t * outputb, uint8_t * inputb, int size, __m256i (*rk)[32], uint8_t * iv)
+// {
+//     __m128i ctr[BLOCK_SIZE*2];
+//     __m256i output_space[BLOCK_SIZE];
+//     __m128i iv_copy;
+//     __m128i t,t2;
+//     __m128i count = _mm_setzero_si128();
+//     //uint64_t count = 0;
+//     uint64_t op[2] = {0,1};
+//     __m128i cnt = _mm_loadu_si128((__m128i*)op);
+//     __m128i vindex_swap = _mm_setr_epi8(
+// 		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
+// 	);
+//     __m256i vindex_swap2 = _mm256_setr_epi8(
+// 		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
+//         7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
+// 	);
+//     uint8_t Associated_Data[]={
+//         0xff,0xff,0xff,0xff,0xff,0xff,0x00,0x03,0x7f,0xff,0xff,0xfe,0x89,0x2c,0x38,0x00,
+//         0x00,0x5c,0x36,0x5c,0x36,0x5c,0x36
+//     };
+//     int add_len = sizeof(Associated_Data) , block_len;
+//     uint8_t accum[16]={
+//         0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+//     };
+//     uint8_t final_block[16];
+//     big_endian_store64(final_block, 8 * sizeof(Associated_Data));
+//     big_endian_store64(final_block + 8, 8 * (sizeof(inputb)-16));
+
+//     memset(outputb,0,size);
+//     memset(ctr,0,sizeof(ctr));
+//     t = _mm_load_si128((__m128i *)iv);
+//     iv_copy = _mm_shuffle_epi8(t,vindex_swap);
+
+//     __m256i * state = (__m256i *)outputb;
+
+//     while(size)
+//     {
+//         int chunk = MIN(size, BS_BLOCK_SIZE);
+//         int blocks = chunk / (BLOCK_SIZE/8);
+
+//         count = _mm_add_epi64(count,cnt);
+//         int i;
+//         for (i = 0; i < blocks; i++)
+//         {
+//             //ctr[i] = iv_copy + count;
+//             count = _mm_add_epi64(count,cnt);
+//             ctr[i] = iv_copy + count;
+//         }
+
+//         //bs_cipher(ctr, rk);
+//         sm4_bs256_enc(ctr,output_space,rk);
+
+//         //shuffle the data because of the transforming Little-Endian to Big-Endian
+//         for(i=0; i<blocks; i++)
+//         {
+//             ctr[i] = _mm_shuffle_epi8(ctr[i],vindex_swap);
+
+//         }
+//         size -= chunk;
+
+//         uint8_t * ctr_p = (uint8_t *) ctr ;
+//         for(i=0; i<chunk; i++)
+//         {
+//             outputb[i] = *ctr_p++ ^ inputb[i];
+//         }
+//     }
+    
+//     //tag test
+//     uint8_t *h = (uint8_t *) ctr;
+//     for(int i=0; i<16; i++)
+//     {
+//         printf("%02x ",h[i]);
+//     }
+//     printf("\n");
+//     uint8_t * add = (uint8_t *) Associated_Data;
+//     add_mul(accum,add,sizeof(Associated_Data),h);
+//     // while(add_len > 0)
+//     // {
+//     //     block_len = 16;
+//     //     if(add_len < block_len){
+//     //         block_len = add_len;
+//     //     }
+//     //     add_mul(accum,add,block_len,h);
+
+//     // }
+//     uint8_t *c = outputb;
+//     c +=16;
+//     for(int i=1; i<4; i++)
+//     {
+//         add_mul(accum,c,16,h);
+//         c+=16;
+//     }
+//     add_mul(accum,final_block,16,h);
+//     for(int i=0; i<16; i++)
+//     {
+//         printf("%02x ",accum[i]);
+//     }
+// }
+
+/**
+ * @description: gcm sm4 withont tag -- encrypto and decrypto correct! 
+ * @param {uint8_t} *
+ * @param {uint8_t} *
+ * @param {int} size
+ * @param {uint8_t} *
+ * @return {*}
+ * @Date: 2021-01-08 22:44:02
+ * @author: one30
+ */
+// void sm4_bs256_gcm_encrypt(uint8_t * outputb, uint8_t * inputb, int size, __m256i (*rk)[32], uint8_t * iv)
 // {
 //     __m128i ctr[BLOCK_SIZE*2];
 //     __m256i output_space[BLOCK_SIZE];
@@ -324,176 +660,34 @@ static void add_mul(uint8_t *a,
 //         int chunk = MIN(size, BS_BLOCK_SIZE);
 //         int blocks = chunk / (BLOCK_SIZE/8);
 
+//         count = _mm_add_epi64(count,cnt);
 //         int i;
 //         for (i = 0; i < blocks; i++)
 //         {
 //             //memmove(ctr + (i * WORDS_PER_BLOCK), iv_copy, BLOCK_SIZE/8);
 //             count = _mm_add_epi64(count,cnt);
 //             ctr[i] = iv_copy + count;
-//             // count = _mm_add_epi64(count,cnt);
+//             //count = _mm_add_epi64(count,cnt);
 //         }
 
 //         //bs_cipher(ctr, rk);
 //         sm4_bs256_enc(ctr,output_space,rk);
+
+//         //data shuffle
 //         for(i=0; i<blocks; i++)
 //         {
-//             ctr[i] = _mm_shuffle_epi8(ctr[i],vindex_swap);     
+//             ctr[i] = _mm_shuffle_epi8(ctr[i],vindex_swap); 
 //         }
 //         size -= chunk;
 
 //         uint8_t * ctr_p = (uint8_t *) ctr;
 //         for(i=0; i<chunk; i++)
 //         {
-//             outputb[i] = *ctr_p++ ^ inputb[i];
+//             *outputb++ = *ctr_p++ ^ *inputb++;
 //         }
 
 //     }
 // }
-
-void sm4_bs256_ctr_encrypt(uint8_t * outputb, uint8_t * inputb, int size, __m256i (*rk)[32], uint8_t * iv)
-{
-    __m128i ctr[BLOCK_SIZE*2];
-    __m256i output_space[BLOCK_SIZE];
-    __m128i iv_copy;
-    __m128i t,t2;
-    __m128i count = _mm_setzero_si128();
-    //uint64_t count = 0;
-    uint64_t op[2] = {0,1};
-    __m128i cnt = _mm_loadu_si128((__m128i*)op);
-    __m128i vindex_swap = _mm_setr_epi8(
-		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
-	);
-    __m256i vindex_swap2 = _mm256_setr_epi8(
-		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
-        7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
-	);
-    uint8_t Associated_Data[]={
-        0xff,0xff,0xff,0xff,0xff,0xff,0x00,0x03,0x7f,0xff,0xff,0xfe,0x89,0x2c,0x38,0x00,
-        0x00,0x5c,0x36,0x5c,0x36,0x5c,0x36
-    };
-    uint8_t accum[16]={
-        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    };
-    uint8_t final_block[16];
-    big_endian_store64(final_block, 8 * sizeof(Associated_Data));
-    big_endian_store64(final_block + 8, 8 * (sizeof(inputb)-16));
-
-    memset(outputb,0,size);
-    memset(ctr,0,sizeof(ctr));
-    t = _mm_load_si128((__m128i *)iv);
-    iv_copy = _mm_shuffle_epi8(t,vindex_swap);
-
-    __m256i * state = (__m256i *)outputb;
-
-    while(size)
-    {
-        int chunk = MIN(size, BS_BLOCK_SIZE);
-        int blocks = chunk / (BLOCK_SIZE/8);
-
-        int i;
-        for (i = 0; i < blocks; i++)
-        {
-            //memmove(ctr + (i * WORDS_PER_BLOCK), iv_copy, BLOCK_SIZE/8);
-            count = _mm_add_epi64(count,cnt);
-            ctr[i] = iv_copy + count;
-            // count = _mm_add_epi64(count,cnt);
-        }
-
-        //bs_cipher(ctr, rk);
-        sm4_bs256_enc(ctr,output_space,rk);
-
-        for(i=0; i<blocks; i++)
-        {
-            //ctr[i] = _mm_shuffle_epi8(ctr[i],vindex_swap);
-
-        }
-        size -= chunk;
-
-        uint8_t * ctr_p = (uint8_t *) ctr;
-        for(i=0; i<chunk; i++)
-        {
-            outputb[i] = *ctr_p++ ^ inputb[i];
-        }
-    }
-    // uint8_t *h = (uint8_t *) ctr;
-    // // for(int i=0; i<16; i++)
-    // // {
-    // //     printf("%02x ",inputb[i]);
-    // // }
-    // // printf("\n");
-    // add_mul(accum,Associated_Data,sizeof(Associated_Data),h);
-    // uint8_t *c = outputb;
-    // c +=16;
-    // for(int i=1; i<4; i++)
-    // {
-    //     add_mul(accum,c,16,h);
-    //     c+=16;
-    // }
-    // add_mul(accum,final_block,16,h);
-    // for(int i=0; i<16; i++)
-    // {
-    //     printf("%02x ",accum[i]);
-    // }
-}
-
-void sm4_bs256_gcm_encrypt(uint8_t * outputb, uint8_t * inputb, int size, __m256i (*rk)[32], uint8_t * iv)
-{
-    __m128i ctr[BLOCK_SIZE*2];
-    __m256i output_space[BLOCK_SIZE];
-    __m128i iv_copy;
-    __m128i t,t2;
-    __m128i count = _mm_setzero_si128();
-    //uint64_t count = 0;
-    uint64_t op[2] = {0,1};
-    __m128i cnt = _mm_loadu_si128((__m128i*)op);
-    __m128i vindex_swap = _mm_setr_epi8(
-		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
-	);
-    __m256i vindex_swap2 = _mm256_setr_epi8(
-		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
-        7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
-	);
-
-    memset(outputb,0,size);
-    memset(ctr,0,sizeof(ctr));
-    t = _mm_load_si128((__m128i *)iv);
-    iv_copy = _mm_shuffle_epi8(t,vindex_swap);
-
-    __m256i * state = (__m256i *)outputb;
-
-    while(size)
-    {
-        int chunk = MIN(size, BS_BLOCK_SIZE);
-        int blocks = chunk / (BLOCK_SIZE/8);
-
-        count = _mm_add_epi64(count,cnt);
-        int i;
-        for (i = 0; i < blocks; i++)
-        {
-            //memmove(ctr + (i * WORDS_PER_BLOCK), iv_copy, BLOCK_SIZE/8);
-            count = _mm_add_epi64(count,cnt);
-            ctr[i] = iv_copy + count;
-            //count = _mm_add_epi64(count,cnt);
-        }
-
-        //bs_cipher(ctr, rk);
-        sm4_bs256_enc(ctr,output_space,rk);
-
-        //data shuffle
-        for(i=0; i<blocks; i++)
-        {
-            ctr[i] = _mm_shuffle_epi8(ctr[i],vindex_swap); 
-        }
-        size -= chunk;
-
-        uint8_t * ctr_p = (uint8_t *) ctr;
-        for(i=0; i<chunk; i++)
-        {
-            *outputb++ = *ctr_p++ ^ *inputb++;
-        }
-
-    }
-}
 
 void BS_init_M(__m128i* M)
 {
