@@ -1,2 +1,53 @@
 20201127:
 sm4_bs256 ecb & ctr mode pass!gcm encrypto pass gcm auth didn't support
+
+20210120:
+bitslice!
+SM4 ECB 1 block Accuracy Test.:
+cipher text: 
+68 1e df 34 d2 06 96 5e 86 b3 e9 4f 53 6e 42 46 
+SM4 ECB 1 block encrypt Test passed!
+SM4 ECB 1 block Accuracy Test end:
+
+SM4-AVX2-bitslice ECB Speed Test:
+SM4_encrypt>>> blocks: 1, time: 0.000009 s, speed: 12.911482 Mb/s
+SM4_encrypt>>> blocks: 4, time: 0.000009 s, speed: 51.460863 Mb/s
+SM4_encrypt>>> blocks: 16, time: 0.000009 s, speed: 206.225979 Mb/s
+SM4_encrypt>>> blocks: 64, time: 0.000010 s, speed: 820.408078 Mb/s
+SM4_encrypt>>> blocks: 512, time: 0.000019 s, speed: 3212.624329 Mb/s
+SM4_encrypt>>> blocks: 1024, time: 0.000039 s, speed: 3194.169746 Mb/s
+SM4-AVX2-bitslice ECB Speed Test end!
+ciphertext: 
+ac 32 36 cb 97 0c c2 07 91 36 4c 39 5a 13 42 d1 
+a3 cb c1 87 8c 6f 30 cd 07 4c ce 38 5c dd 70 c7 
+f2 34 bc 0e 24 c1 19 80 fd 12 86 31 0c e3 7b 92 
+6e 02 fc d0 fa a0 ba f3 8b 29 33 85 1d 82 45 14 
+plaintext: 
+aa aa aa aa aa aa aa aa bb bb bb bb bb bb bb bb 
+cc cc cc cc cc cc cc cc dd dd dd dd dd dd dd dd 
+ee ee ee ee ee ee ee ee ff ff ff ff ff ff ff ff 
+aa aa aa aa aa aa aa aa bb bb bb bb bb bb bb bb 
+SM4-AVX2-bitslice CTR Speed Test.
+SM4_encrypt>>> blocks: 1, time: 0.000010 s, speed: 12.832352 Mb/s
+SM4_encrypt>>> blocks: 4, time: 0.000009 s, speed: 51.454898 Mb/s
+SM4_encrypt>>> blocks: 16, time: 0.000010 s, speed: 203.190183 Mb/s
+SM4_encrypt>>> blocks: 64, time: 0.000010 s, speed: 790.842925 Mb/s
+SM4_encrypt>>> blocks: 512, time: 0.000022 s, speed: 2848.327690 Mb/s
+SM4_encrypt>>> blocks: 1024, time: 0.000044 s, speed: 2825.133290 Mb/s
+SM4-AVX2-bitslice CTR Speed Test end!
+
+SM4 GCM 4 block:
+ciphertext: 
+0a 59 91 a6 70 dc 0e a2 6f 84 e4 55 a1 c0 61 47 
+8a a0 9f 2f be 90 49 46 29 bc 58 e7 5b e5 e9 1d 
+bc 6d 21 49 bc 1f ba ca ca a9 72 2d 61 0f de 1d 
+tag: 
+99 20 b1 eb fb 59 02 5f 0e ba 77 8c f5 9a 5c c8 
+SM4-AVX2-bitslice GCM Speed Test.
+SM4_encrypt>>> blocks: 1, time: 0.000010 s, speed: 11.945660 Mb/s
+SM4_encrypt>>> blocks: 4, time: 0.000011 s, speed: 46.489251 Mb/s
+SM4_encrypt>>> blocks: 16, time: 0.000012 s, speed: 164.944558 Mb/s
+SM4_encrypt>>> blocks: 64, time: 0.000017 s, speed: 471.316791 Mb/s
+SM4_encrypt>>> blocks: 512, time: 0.000072 s, speed: 873.704297 Mb/s
+SM4_encrypt>>> blocks: 1024, time: 0.000143 s, speed: 873.950473 Mb/s
+SM4-AVX2-bitslice GCM Speed Test end!
