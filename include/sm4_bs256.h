@@ -3,7 +3,7 @@
  * @Version      : 
  * @Autor        : one30
  * @Date         : 2020-11-11 21:52:20
- * @LastEditTime : 2021-01-14 16:30:26
+ * @LastEditTime : 2021-01-14 22:47:28
  * @FilePath     : /include/sm4_bs256.h
  */
 #include <stdio.h>
@@ -41,9 +41,14 @@ uint64_t start_rdtsc();
 uint64_t end_rdtsc();
 void benchmark_sm4_bs_ecb_encrypt(uint8_t *plain, uint8_t *cipher,int size,__m256i (*rk)[32]);
 void benchmark_sm4_bs_ctr_encrypt(uint8_t *plain, uint8_t *cipher,int size,__m256i (*rk)[32],uint8_t * iv);
+void benchmark_sm4_bs_gcm_encrypt(uint8_t *plain, uint8_t *cipher,int size,__m256i (*rk)[32],
+    uint8_t * iv, int iv_len, uint8_t *add ,int add_len,
+    uint8_t *tag, int tag_len, uint8_t T[][256][16]);
 void sm4_bs256_ecb_encrypt(uint8_t* outputb,uint8_t* inputb,int size,__m256i (*rk)[32]);
 void sm4_bs256_ctr_encrypt(uint8_t * outputb, uint8_t * inputb, int size, __m256i (*rk)[32], uint8_t * iv);
-void sm4_bs256_gcm_encrypt(uint8_t * outputb, uint8_t * inputb, int size, __m256i (*rk)[32], uint8_t * iv);
+void sm4_bs256_gcm_encrypt(uint8_t *outputb, uint8_t *inputb, int size,
+    __m256i (*rk)[32], uint8_t *iv, int iv_len, uint8_t *add ,int add_len,
+    uint8_t *tag, int tag_len, uint8_t T[][256][16]);
 void sm4_bs256_key_schedule(uint8_t* key, __m256i (*BS_RK_256)[32]);
 void BS_init_M(__m128i* M);
 void SM4_BS_enc(__m128i* M,__m256i* N);

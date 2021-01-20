@@ -3,7 +3,7 @@
  * @Version      : 
  * @Autor        : one30
  * @Date         : 2021-01-14 11:09:54
- * @LastEditTime : 2021-01-14 16:38:06
+ * @LastEditTime : 2021-01-20 11:46:11
  * @FilePath     : /include/mode_gcm.h
  */
 #include <stdio.h>
@@ -41,6 +41,8 @@ typedef struct {
  */
 void *gcm_init();
 
+
+void gcm_free( void *ctx );
 
 /**
  * compute T1, T2, ... , and T15
@@ -85,4 +87,4 @@ void ghash(uint8_t T[][256][16],
 /**
  * return the value of (output.H) by looking up tables
  */
- void multi(uint8_t T[][256][16], uint8_t *output);
+ static void multi(uint8_t T[][256][16], uint8_t *output);

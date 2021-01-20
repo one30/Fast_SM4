@@ -3,11 +3,12 @@
  * @Version      : source from https://github.com/openluopworld/aes_gcm.git
  * @Autor        : one30
  * @Date         : 2021-01-14 11:09:34
- * @LastEditTime : 2021-01-14 16:36:09
+ * @LastEditTime : 2021-01-20 11:45:55
  * @FilePath     : /src/mode_gcm.c
  */
 #include <stdint.h>
 #include <stdlib.h>
+#include <immintrin.h>
 
 #include "mode_gcm.h"
 
@@ -15,6 +16,15 @@ void *gcm_init() {
     return malloc(sizeof(gcm_context));
 }
 
+void gcm_free( void *ctx ) {
+    if ( ctx ) {
+        gcm_context *temp_ctx = (gcm_context*)ctx;
+        if ( temp_ctx->rk ) {
+            free(temp_ctx->rk);
+        }
+        free(ctx);
+    }
+}
 
  void otherT(uint8_t T[][256][16]) {
 	int i = 0, j = 0, k = 0;
@@ -100,7 +110,7 @@ void computeTable(uint8_t T[][256][16], uint8_t H[]) {
 	otherT(T);
 }
 
-void multi(uint8_t T[][256][16], uint8_t *output) {
+static void multi(uint8_t T[][256][16], uint8_t *output) {
 	uint8_t i, j;
 	uint8_t temp[16];
 	for ( i = 0; i < 16; i++ ) {
@@ -112,6 +122,19 @@ void multi(uint8_t T[][256][16], uint8_t *output) {
 			output[j] ^= T[i][*(temp+i)][j];
 		}
 	}
+
+
+	// __m128i Temp = _mm_load_si128((__m128i *)output);
+	// __m128i out = _mm_setzero_si128();
+	// for ( i = 0; i < 16; i++ ) {
+	// 	// for ( j = 0; j < 16; j++ ) {
+	// 	// 	output[j] ^= T[i][*(temp+i)][j];
+	// 	// }
+	// 	out ^= 
+	// }
+
+	
+	
 }
 
 void ghash(uint8_t T[][256][16],
