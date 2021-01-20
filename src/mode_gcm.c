@@ -3,7 +3,7 @@
  * @Version      : source from https://github.com/openluopworld/aes_gcm.git
  * @Autor        : one30
  * @Date         : 2021-01-14 11:09:34
- * @LastEditTime : 2021-01-20 11:45:55
+ * @LastEditTime : 2021-01-20 20:11:27
  * @FilePath     : /src/mode_gcm.c
  */
 #include <stdint.h>
@@ -19,9 +19,9 @@ void *gcm_init() {
 void gcm_free( void *ctx ) {
     if ( ctx ) {
         gcm_context *temp_ctx = (gcm_context*)ctx;
-        if ( temp_ctx->rk ) {
-            free(temp_ctx->rk);
-        }
+        // if ( temp_ctx->rk ) {
+        //     free(temp_ctx->rk);
+        // }
         free(ctx);
     }
 }

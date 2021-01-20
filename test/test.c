@@ -1,6 +1,5 @@
 #include "test.h"
 #include "sm4_bs256.h"
-#include "mode_gcm.h"
 #include "utils.h"
 
 void sm4_bs256_ecb_test()
@@ -196,25 +195,21 @@ void sm4_bs256_gcm_test()
     uint8_t t[SM4_GCM_TESTS_BYTES];
     __m256i rk[32][32];
 
-    sm4_bs256_key_schedule(key_vector,rk);
-    //compute table
-    uint8_t p_h[16] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-    uint8_t c_h[16];
-    sm4_bs256_ecb_encrypt(c_h,p_h,16,rk);
-    computeTable(T, c_h);
+    //sm4_bs256_key_schedule(key_vector,rk);
+
+    gcm_context *ctx = gcm_init();
+    sm4_bs256_gcm_init(ctx,key_vector,rk,iv_vector);
+
+    printf("ctx->: \n");
+    dump_hex(tag,sizeof(tag));
 
     sm4_bs256_gcm_encrypt(output,pt_vector,sizeof(pt_vector),rk,
          iv_vector,sizeof(iv_vector),Associated_Data, sizeof(Associated_Data),
-         tag, sizeof(tag),T);
+         tag, sizeof(tag),ctx);
     printf("ciphertext: \n");
     dump_hex(output,SM4_GCM_TESTS_BYTES);
     printf("tag: \n");
     dump_hex(tag,sizeof(tag));
-
-    // sm4_bs256_gcm_encrypt(t,output,sizeof(pt_vector),rk, iv_vector);
-    // printf("plaintext: \n");
-    // dump_hex(t,SM4_GCM_TESTS_BYTES);
-
 
     printf("SM4-AVX2-bitslice GCM Speed Test.\n");
     uint8_t *plainn = (uint8_t *)malloc(16*(1<<15));
@@ -226,5 +221,27 @@ void sm4_bs256_gcm_test()
     benchmark_sm4_bs_gcm_encrypt(plainn,c,8192,rk,iv_vector,16,Associated_Data,23,tag,16,T);
     benchmark_sm4_bs_gcm_encrypt(plainn,c,16384,rk,iv_vector,16,Associated_Data,23,tag,16,T);
     printf("SM4-AVX2-bitslice GCM Speed Test end!\n\n");
+
+    gcm_free(ctx);
+}
+
+void sm4_bs512_ecb_test()
+{
+    uint8_t key_vector[16] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10};
+    //uint8_t pt_vector[16] =  {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+    uint8_t pt_vector[16] =  {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10};
+    uint8_t ct_vector[16] =  {0x68, 0x1e, 0xdf, 0x34, 0xd2, 0x06, 0x96, 0x5e, 0x86, 0xb3, 0xe9, 0x4f, 0x53, 0x6e, 0x42, 0x46};
+    uint8_t output[16];
+    uint8_t input[16];
+    __m512i rk[32][32];
+
+    sm4_bs512_key_schedule(key_vector,rk);
+    printf("SM4 ECB 1 block Accuracy Test.:\n");
+    sm4_bs512_ecb_encrypt(output,pt_vector,16,rk);
+    printf("cipher text: \n");
+    dump_hex(output,16);
+    if(memcmp(ct_vector,output,16)==0)
+        printf("SM4 ECB 1 block encrypt Test passed!\n");
+    printf("SM4 ECB 1 block Accuracy Test end:\n\n");
 }
 

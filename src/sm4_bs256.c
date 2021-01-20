@@ -3,14 +3,13 @@
  * @Version      : 
  * @Autor        : one30
  * @Date         : 2020-11-11 21:51:47
- * @LastEditTime : 2021-01-20 16:19:06
+ * @LastEditTime : 2021-01-20 22:58:22
  * @FilePath     : /src/sm4_bs256.c
  */
 #include <string.h>
 #include <time.h>
 
 #include "sm4_bs256.h"
-#include "mode_gcm.h"
 
 static const unsigned char SboxTable[16][16] = 
 {
@@ -171,6 +170,78 @@ void sm4_bs256_ecb_encrypt(uint8_t* outputb,uint8_t* inputb,int size,__m256i (*r
         
     }
 }
+
+// void sm4_bs512_ecb_encrypt(uint8_t* outputb,uint8_t* inputb,int size,__m512i (*rk)[32]){
+//     __m512i output_space[BLOCK_SIZE];
+//     __m128i input_space[BLOCK_SIZE*4];
+//     __m128i state[512];
+//     __m128i t;
+//     __m512i t2;
+//     //the masking for shuffle the data
+//     __m128i vindex_swap = _mm_setr_epi8(
+// 		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
+// 	);
+//     __m256i vindex_swap2 = _mm256_setr_epi8(
+// 		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
+//         7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
+// 	);
+//     __m512i vindex_swap3 = _mm512_set_epi8(
+// 		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
+//         7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
+//         7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
+//         7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
+// 	);
+
+//     memset(outputb,0,size);
+//     __m512i* out = (__m512i*)outputb;
+//     __m128i* in = (__m128i*)inputb;
+
+//     while(size > 0)
+//     {
+//         if(size < BS_BLOCK_SIZE)
+//         {
+//             memset(input_space,0,BS_BLOCK_SIZE);
+//             for(int i=0; i<size/16; i++)
+//             {
+//                 t = _mm_shuffle_epi8(in[i],vindex_swap);
+//                 _mm_storeu_si128(input_space+i,t);
+//             }
+//             sm4_bs256_enc(input_space,output_space,rk);
+//             // for(int i=0; i<(size+16)/32; i++)
+//             // {
+//             //     t2 = _mm256_shuffle_epi8(output_space[i],vindex_swap2);
+//             //     _mm256_storeu_si256(out+i,t2);          
+//             // }
+//             __m128i* out_t = (__m128i*)out;
+//             for(int i=0; i<size/16; i++)
+//             {
+//                 t = _mm_shuffle_epi8(input_space[i],vindex_swap);
+//                 _mm_storeu_si128(out_t,t);
+//                 out_t++;
+//             }
+//             size = 0;
+//             //out += size;
+//         }
+//         else
+//         {
+//             memmove(state,inputb,BS_BLOCK_SIZE);
+//             for(int i=0; i<BLOCK_SIZE*2; i++){
+//                 t = _mm_shuffle_epi8(in[i],vindex_swap);
+//                 _mm_storeu_si128(input_space+i,t);
+//             }
+//             sm4_bs256_enc(input_space,output_space,rk);
+//             for(int i=0; i<BLOCK_SIZE; i++)
+//             {
+//                 t2 = _mm256_shuffle_epi8(output_space[i],vindex_swap2);
+//                 _mm256_storeu_si256(out+i,t2);          
+//             }
+//             size -= BS_BLOCK_SIZE;
+//             out += BLOCK_SIZE;
+//             in += BLOCK_SIZE*2;
+//         }
+        
+//     }
+// }
 
 static void INC_CTR(uint8_t * ctr, uint8_t i)
 {
@@ -378,9 +449,9 @@ void sm4_bs256_ctr_encrypt(uint8_t * outputb, uint8_t * inputb, int size, __m256
  */
 void sm4_bs256_gcm_encrypt(uint8_t *outputb, uint8_t *inputb, int size,
     __m256i (*rk)[32], uint8_t *iv, int iv_len, uint8_t *add ,int add_len,
-    uint8_t *tag, int tag_len, uint8_t T[][256][16])
+    uint8_t *tag, int tag_len, gcm_context *ctx)
 {
-    __m128i ctr[BLOCK_SIZE*2 + 1];//gcm mode need H
+    __m128i ctr[BLOCK_SIZE*2];
     __m256i output_space[BLOCK_SIZE];
     __m128i iv_copy;
     __m128i t,t2;
@@ -410,12 +481,11 @@ void sm4_bs256_gcm_encrypt(uint8_t *outputb, uint8_t *inputb, int size,
         int chunk = MIN(size, BS_BLOCK_SIZE);
         int blocks = chunk / (BLOCK_SIZE/8);
 
-        //count = _mm_add_epi64(count,cnt);
+        count = _mm_add_epi64(count,cnt);
         int i;
-        for (i = 1; i <= blocks + 1; i++)//gcm mode need more 1 block
+        for (i = 0; i < blocks; i++)//gcm mode need more 1 block
         {
-            //ctr[i] = iv_copy + count;
-            //gcm mode iv from 0x01!
+            //gcm mode iv from 0x02!
             count = _mm_add_epi64(count,cnt);
             ctr[i] = iv_copy + count;
         }
@@ -424,14 +494,14 @@ void sm4_bs256_gcm_encrypt(uint8_t *outputb, uint8_t *inputb, int size,
         sm4_bs256_enc(ctr,output_space,rk);
 
         //shuffle the data because of the transforming Little-Endian to Big-Endian
-        for(i=0; i<=blocks+1; i++)
+        for(i=0; i<blocks; i++)
         {
             ctr[i] = _mm_shuffle_epi8(ctr[i],vindex_swap);
 
         }
         size -= chunk;
 
-        uint8_t * ctr_p = (uint8_t *) ctr + 32 ;
+        uint8_t * ctr_p = (uint8_t *) ctr ;
         for(i=0; i<chunk; i++)
         {
             outputb[i] = *ctr_p++ ^ inputb[i];
@@ -439,130 +509,16 @@ void sm4_bs256_gcm_encrypt(uint8_t *outputb, uint8_t *inputb, int size,
     }
     
     //Auth tag test
-    void * context = gcm_init();
-    if ( !context ) { 
-		printf("malloc failed.\n");
-	}
-
-    gcm_context *ctx = (gcm_context*)context;
-
-    //set H
-    uint8_t y0[GCM_BLOCK_SIZE] = {0}; // store the counter
-    uint8_t *ency0 = (uint8_t *) ctr; // the cihper text of first counter
-    for (int i = 0; i < GCM_BLOCK_SIZE; ++i ) { ctx->H[i] = ency0[i]; }
-
-    //compute table
-    //computeTable(ctx->T, ctx->H);
-
-    //compute y0 (initilization vector)
-    if (GCM_DEFAULT_IV_LEN != sizeof(iv)){
-        ghash(ctx->T, NULL, 0, iv, sizeof(iv), y0);
-    }
-
     //compute tag
-    ghash(T,add,add_len, outputb, length , ctx->buff);
-    uint8_t *ency1 = (uint8_t *) ctr + 16;
+    ghash(ctx->T,add,add_len, outputb, length , ctx->buff);
+    //uint8_t *ency1 = (uint8_t *) ctr + 16;
     for (int i = 0; i < tag_len; ++i ) {
-        tag[i] = ctx->buff[i] ^ ency1[i];
+        tag[i] = ctx->buff[i] ^ ctx->Enc_y0[i];
     }
 
-    gcm_free(context);
+    //gcm_free(context);
 
 }
-
-// void sm4_bs256_gcm_encrypt(uint8_t *outputb, uint8_t *inputb, int size,
-//     __m256i (*rk)[32], uint8_t *iv, int iv_len, uint8_t *add ,int add_len,
-//     uint8_t *tag, int tag_len, uint8_t T[][256][16])
-// {
-//     __m128i ctr[BLOCK_SIZE*2 + 1];//gcm mode need H
-//     __m256i output_space[BLOCK_SIZE];
-//     __m128i iv_copy;
-//     __m128i t,t2;
-//     __m128i count = _mm_setzero_si128();
-//     ctr[0] = count;//gcm mode 
-//     //uint64_t count = 0;
-//     uint64_t op[2] = {0,1};
-//     __m128i cnt = _mm_loadu_si128((__m128i*)op);
-//     __m128i vindex_swap = _mm_setr_epi8(
-// 		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
-// 	);
-//     __m256i vindex_swap2 = _mm256_setr_epi8(
-// 		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
-//         7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
-// 	);
-//     int length = size, flag = 1;
-
-//     memset(outputb,0,size);
-//     memset(ctr,0,sizeof(ctr));
-//     t = _mm_load_si128((__m128i *)iv);
-//     iv_copy = _mm_shuffle_epi8(t,vindex_swap);
-
-//     __m256i * state = (__m256i *)outputb;
-
-//     while(size)
-//     {
-//         int chunk = MIN(size, BS_BLOCK_SIZE);
-//         int blocks = chunk / (BLOCK_SIZE/8);
-
-//         //count = _mm_add_epi64(count,cnt);
-//         int i;
-//         for (i = 1; i <= blocks + 1; i++)//gcm mode need more 1 block
-//         {
-//             //ctr[i] = iv_copy + count;
-//             //gcm mode iv from 0x01!
-//             count = _mm_add_epi64(count,cnt);
-//             ctr[i] = iv_copy + count;
-//         }
-
-//         //bs_cipher(ctr, rk);
-//         sm4_bs256_enc(ctr,output_space,rk);
-
-//         //shuffle the data because of the transforming Little-Endian to Big-Endian
-//         for(i=0; i<=blocks+1; i++)
-//         {
-//             ctr[i] = _mm_shuffle_epi8(ctr[i],vindex_swap);
-
-//         }
-//         size -= chunk;
-
-//         uint8_t * ctr_p = (uint8_t *) ctr + 32 ;
-//         for(i=0; i<chunk; i++)
-//         {
-//             outputb[i] = *ctr_p++ ^ inputb[i];
-//         }
-//     }
-    
-//     //Auth tag test
-//     void * context = gcm_init();
-//     if ( !context ) { 
-// 		printf("malloc failed.\n");
-// 	}
-
-//     gcm_context *ctx = (gcm_context*)context;
-
-//     //set H
-//     uint8_t y0[GCM_BLOCK_SIZE] = {0}; // store the counter
-//     uint8_t *ency0 = (uint8_t *) ctr; // the cihper text of first counter
-//     for (int i = 0; i < GCM_BLOCK_SIZE; ++i ) { ctx->H[i] = ency0[i]; }
-
-//     //compute table
-//     //computeTable(ctx->T, ctx->H);
-
-//     //compute y0 (initilization vector)
-//     if (GCM_DEFAULT_IV_LEN != sizeof(iv)){
-//         ghash(ctx->T, NULL, 0, iv, sizeof(iv), y0);
-//     }
-
-//     //compute tag
-//     ghash(T,add,add_len, outputb, length , ctx->buff);
-//     uint8_t *ency1 = (uint8_t *) ctr + 16;
-//     for (int i = 0; i < tag_len; ++i ) {
-//         tag[i] = ctx->buff[i] ^ ency1[i];
-//     }
-
-//     gcm_free(context);
-
-// }
 
 void BS_init_M(__m128i* M)
 {
@@ -758,6 +714,185 @@ void BS_TRANS_VER_128x256(__m256i* N,__m128i* M){
     }
 }
 
+void BS_TRANS_128x128(__m128i* M,__m128i* N){
+    // M[1] = {0xfffffff,0xfffffff,0xfffffff,0xfffffff};
+    __m128i mask[7];
+    __m128i M_temp[128];
+    //memset(N,0,128);
+    uint64_t m0[2] = {0x5555555555555555,0x5555555555555555};
+    uint64_t m1[2] = {0x3333333333333333,0x3333333333333333};
+    uint64_t m2[2] = {0x0f0f0f0f0f0f0f0f,0x0f0f0f0f0f0f0f0f};
+    uint64_t m3[2] = {0x00ff00ff00ff00ff,0x00ff00ff00ff00ff};
+    uint64_t m4[2] = {0x0000ffff0000ffff,0x0000ffff0000ffff};
+    uint64_t m5[2] = {0x00000000ffffffff,0x00000000ffffffff};
+    uint64_t m6[2] = {0x0000000000000000,0xffffffffffffffff};
+    mask[0] = _mm_load_si128((__m128i*)m0);
+    mask[1] = _mm_load_si128((__m128i*)m1);
+    mask[2] = _mm_load_si128((__m128i*)m2);
+    mask[3] = _mm_load_si128((__m128i*)m3);
+    mask[4] = _mm_load_si128((__m128i*)m4);
+    mask[5] = _mm_load_si128((__m128i*)m5);
+    mask[6] = _mm_load_si128((__m128i*)m6);
+    for(int i = 0; i < 128; i++)
+    {
+        N[i] = M[i];
+    }
+    uint8_t k = 0;
+    uint64_t k2,kt,l,o4,p4;
+    __m64_u t1[2],t2[2];
+    __m64_u zero = _mm_setzero_si64();
+    __m128i temp,m,n,o,p;
+    for(int j=0; j<7; j++)
+    {
+        k = 1<<j;
+        k2 = k*2;
+        kt = 0;
+        //r = k-1;
+
+        if(j==6)
+        {
+            for(int i=0; i<64; i++)
+            {
+                l = kt%127;
+                m = N[l];
+                n = N[l+k];
+
+                _mm_store_si128((__m128i*)t1,n);
+                o = _mm_setr_epi64(zero,t1[0]);
+
+                //p = ((m<<k)&~mask[j]);
+                _mm_store_si128((__m128i*)t2,m);
+                p = _mm_setr_epi64(t2[1],zero);
+
+                temp = (m&~mask[j]) ^ o;
+                N[l+k] = (n&(mask[j])) ^ p;
+                N[l] = temp;
+                M_temp[l] = temp;
+                M_temp[l+k] = N[l+k];
+
+                kt+=k2;
+            }
+        }
+        else
+        {
+            for(int i=0; i<64; i++)
+            {
+                // l = (k2*i)%63;
+                l = kt%127;
+                m = N[l];
+                n = N[l+k];
+                temp = (m&~mask[j])^ ((n>>k)&mask[j]);
+                N[l+k] = (n&(mask[j])) ^ ((m<<k)&~mask[j]);
+                N[l] = temp;
+                M_temp[l] = temp;
+                M_temp[l+k] = N[l+k];
+
+                kt+=k2;           
+            }
+        }
+    }
+}
+
+void BS_TRANS2_128x512(__m128i* M,__m512i* N){
+    // M[1] = {0xfffffff,0xfffffff,0xfffffff,0xfffffff};
+    //uint64_t mask[6];
+    __m128i M1[128],M2[128],M3[128],M4[128];
+    __m128i N1[128],N2[128],N3[128],N4[128];
+    __m256i mask[8];
+    __m256i mk[8];
+    __m256i test[256];
+    uint64_t a[2],b[2],c[2],d[2];
+    for(int i = 0; i < 128; i++)
+    {
+        M1[i] = M[i];
+        M2[i] = M[i+128];
+        M3[i] = M[i+256];  
+        M4[i] = M[i+384];
+    }
+    
+    BS_TRANS_128x128(M1,N1);
+    BS_TRANS_128x128(M2,N2);
+    BS_TRANS_128x128(M3,N3);
+    BS_TRANS_128x128(M4,N4);
+
+    for(int i=0; i<128; i++)
+    {
+        _mm_store_si128((__m128i*)a,N1[i]);
+        _mm_store_si128((__m128i*)b,N2[i]);
+        _mm_store_si128((__m128i*)c,N3[i]);
+        _mm_store_si128((__m128i*)d,N4[i]);
+        N[i] = _mm512_set_epi64(a[0],a[1],b[0],b[1],c[0],c[1],d[0],d[1]);
+    }
+    
+    // uint64_t result[8];
+    // for(int j=0; j<128; j++)
+    // {
+    //     _mm512_store_si512((__m512i*)result,N[j]);
+    //     for(int k=0; k<8; k++)
+    //     {
+    //         printf("%016llx ",result[k]);
+    //     }
+    //     printf("\n");
+    // }
+
+}
+
+void BS_TRANS2_VER_128x512(__m512i* N,__m128i* M){
+    // M[1] = {0xfffffff,0xfffffff,0xfffffff,0xfffffff};
+    //uint64_t mask[6];
+    __m128i M1[128],M2[128],M3[128],M4[128];
+    __m128i N1[128],N2[128],N3[128],N4[128];
+    __m256i mask[8];
+    __m256i mk[8];
+    __m256i test[256];
+    uint64_t a[2],b[2],c[2],d[2];
+    __m64 temp[8];
+    for(int i = 0; i < 128; i++)
+    {
+        _mm512_store_epi64((__m512i*)temp,N[i]);
+        N1[i] = _mm_set_epi64(temp[0],temp[1]);
+        N2[i]= _mm_set_epi64(temp[2],temp[3]);
+        N3[i] = _mm_set_epi64(temp[4],temp[5]);  
+        N4[i] = _mm_set_epi64(temp[6],temp[7]);
+    }
+    
+    BS_TRANS_128x128(N1,M1);
+    BS_TRANS_128x128(N2,M2);
+    BS_TRANS_128x128(N3,M3);
+    BS_TRANS_128x128(N4,M4);
+
+    // for(int i=0; i<128; i++)
+    // {
+    //     _mm_store_si128((__m128i*)a,M1[i]);
+    //     _mm_store_si128((__m128i*)b,M2[i]);
+    //     _mm_store_si128((__m128i*)c,M3[i]);
+    //     _mm_store_si128((__m128i*)d,M4[i]);
+    //     N[i] = _mm512_set_epi64(a[0],a[1],b[0],b[1],c[0],c[1],d[0],d[1]);
+    // }
+    
+    for(int i=0; i<128; i++)
+    {
+        M[i] = M1[i];
+        M[i+128] = M2[i];
+        M[i+256] = M3[i];  
+        M[i+384] = M4[i];
+    }
+
+    // uint64_t result[2];
+    // printf("ver_transform:\n");
+    // for(int j=0; j<512; j++)
+    // {
+    //     //_mm512_store_si512((__m512i*)result,N[j]);
+    //     _mm_store_si128((__m128i*)result,M[j]);
+    //     for(int k=0; k<2; k++)
+    //     {
+    //         printf("%016llx ",result[k]);
+    //     }
+    //     printf("\n");
+    // }
+
+}
+
 /*
  * private function:
  * look up in SboxTable and get the related value.
@@ -862,6 +997,96 @@ void sm4_bs256_key_schedule(uint8_t* key, __m256i (*BS_RK_256)[32])
         }
     }
     
+}
+
+void sm4_bs512_key_schedule(uint8_t* key, __m512i (*BS_RK_512)[32])
+{
+    uint32_t rkey[32];
+    uint64_t BS_RK[32][32][8];
+	// System parameter or family key
+	const uint32_t FK[4] = { 0xa3b1bac6, 0x56aa3350, 0x677d9197, 0xb27022dc };
+
+	const uint32_t CK[32] = {
+	0x00070E15, 0x1C232A31, 0x383F464D, 0x545B6269,
+	0x70777E85, 0x8C939AA1, 0xA8AFB6BD, 0xC4CBD2D9,
+	0xE0E7EEF5, 0xFC030A11, 0x181F262D, 0x343B4249,
+	0x50575E65, 0x6C737A81, 0x888F969D, 0xA4ABB2B9,
+	0xC0C7CED5, 0xDCE3EAF1, 0xF8FF060D, 0x141B2229,
+	0x30373E45, 0x4C535A61, 0x686F767D, 0x848B9299,
+	0xA0A7AEB5, 0xBCC3CAD1, 0xD8DFE6ED, 0xF4FB0209,
+	0x10171E25, 0x2C333A41, 0x484F565D, 0x646B7279
+	};
+
+	uint32_t K[36];
+    uint32_t MK[4];
+    GET_ULONG_BE( MK[0], key, 0 );
+    GET_ULONG_BE( MK[1], key, 4 );
+    GET_ULONG_BE( MK[2], key, 8 );
+    GET_ULONG_BE( MK[3], key, 12 );
+
+	K[0] = MK[0] ^ FK[0];
+	K[1] = MK[1] ^ FK[1];
+	K[2] = MK[2] ^ FK[2];
+	K[3] = MK[3] ^ FK[3];
+
+	// for(int i=0; i<32; i++)
+	// {
+	// 	K[i % 4] ^= SM4_Tp(K[(i+1)%4] ^ K[(i+2)%4] ^ K[(i+3)%4] ^ CK[i]);
+	// 	rkey[i] = K[i % 4];
+	// }
+
+    for(int i = 0; i<32; i++)
+    {
+        K[i+4] = K[i] ^ (sm4CalciRK(K[i+1]^K[i+2]^K[i+3]^CK[i]));
+        rkey[i] = K[i+4];
+        //printf("rkey[%d]=%08x\n",i,rkey[i]);
+	}
+
+    //rkey[] 
+    for(int i = 0; i<32; i++)
+    {
+        //printf("rkey[%d]=%08x\n",i,rkey[i]);
+        uint64_t t = 0x1;
+        for(int j = 0; j < 32; j++)
+        {
+            for(int k = 0; k < 8; k++)
+            {
+                if(rkey[i] & t)
+                    BS_RK[i][31-j][k] = ~0;
+                else
+                {
+                    BS_RK[i][31-j][k] = 0;
+                }
+            }
+            t = t << 1;
+        }
+    }
+
+    for(int i = 0; i < 32; i++)//load data
+    {
+        for(int j = 0; j < 32; j++)
+        {
+            BS_RK_512[i][j] = _mm512_loadu_si512((__m512i*)BS_RK[i][j]);
+        }
+    }
+    
+}
+
+void sm4_bs256_gcm_init(gcm_context *context, unsigned char *key,
+__m256i (*BS_RK_256)[32], unsigned char *iv)
+{
+    //key_schedule
+    sm4_bs256_key_schedule(key,BS_RK_256);
+    //compute table, init h and E(y0)
+
+    uint8_t p_h[32],c_h[32];
+    memset(p_h, 0, 32);//all 0
+    memcpy(p_h+16, iv, 16);//iv||counter0
+    memset(p_h+31, 1, 1);
+    sm4_bs256_ecb_encrypt(c_h,p_h,32,BS_RK_256);
+    computeTable(context->T, c_h);
+    memcpy(context->H, c_h, 16);
+    memcpy(context->Enc_y0, c_h+16, 16);
 }
 
 void BS_iteration(__m256i* N,__m256i BS_RK_256[32][32])

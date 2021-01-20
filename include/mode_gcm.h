@@ -3,7 +3,7 @@
  * @Version      : 
  * @Autor        : one30
  * @Date         : 2021-01-14 11:09:54
- * @LastEditTime : 2021-01-20 11:46:11
+ * @LastEditTime : 2021-01-20 20:31:05
  * @FilePath     : /include/mode_gcm.h
  */
 #include <stdio.h>
@@ -25,10 +25,11 @@ typedef int (*block_decrypt_p)(const uint8_t *roundkeys, const uint8_t *input, u
  */
 typedef struct {
     // rounds keys of block cipher
-    uint8_t *rk;
+    //__m256i rk[32][32];
     // block cipher encryption
-    block_encrypt_p block_encrypt;
+    // block_encrypt_p block_encrypt;
     uint8_t H[GCM_BLOCK_SIZE];
+    uint8_t Enc_y0[GCM_BLOCK_SIZE];//Enc(y0);y0 = iv||0
     uint8_t buff[GCM_BLOCK_SIZE];
     uint8_t T[GCM_BLOCK_SIZE][256][GCM_BLOCK_SIZE];
 } gcm_context;

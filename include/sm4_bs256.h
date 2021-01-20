@@ -3,7 +3,7 @@
  * @Version      : 
  * @Autor        : one30
  * @Date         : 2020-11-11 21:52:20
- * @LastEditTime : 2021-01-14 22:47:28
+ * @LastEditTime : 2021-01-20 22:34:39
  * @FilePath     : /include/sm4_bs256.h
  */
 #include <stdio.h>
@@ -11,6 +11,7 @@
 #include <string.h>
 #include <immintrin.h>
 #include "utils.h"
+#include "mode_gcm.h"
 #define BLOCK_SIZE          128
 #define WORD_SIZE           256
 #define BS_BLOCK_SIZE       4096
@@ -48,7 +49,9 @@ void sm4_bs256_ecb_encrypt(uint8_t* outputb,uint8_t* inputb,int size,__m256i (*r
 void sm4_bs256_ctr_encrypt(uint8_t * outputb, uint8_t * inputb, int size, __m256i (*rk)[32], uint8_t * iv);
 void sm4_bs256_gcm_encrypt(uint8_t *outputb, uint8_t *inputb, int size,
     __m256i (*rk)[32], uint8_t *iv, int iv_len, uint8_t *add ,int add_len,
-    uint8_t *tag, int tag_len, uint8_t T[][256][16]);
+    uint8_t *tag, int tag_len, gcm_context *ctx);
+void sm4_bs256_gcm_init(gcm_context *context, unsigned char *key,
+__m256i (*BS_RK_256)[32], unsigned char *iv);
 void sm4_bs256_key_schedule(uint8_t* key, __m256i (*BS_RK_256)[32]);
 void BS_init_M(__m128i* M);
 void SM4_BS_enc(__m128i* M,__m256i* N);
@@ -64,6 +67,9 @@ void Sm4_BoolFun(bits in, bit_t *out0, bit_t *out1, bit_t *out2, bit_t *out3, bi
 void BS_iteration(__m256i* N,__m256i (*BS_RK_256)[32]);
 void S_box(int round,__m256i (*buf_256)[32]);
 
+void BS_TRANS_128x128(__m128i* M,__m128i* N);
+void BS_TRANS2_128x512(__m128i* M,__m512i* N);
+void BS_TRANS2_VER_128x512(__m512i* N,__m128i* M);
 
 /*
  * 32-bit integer manipulation macros (big endian)
