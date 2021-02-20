@@ -3,7 +3,7 @@
  * @Version      : 
  * @Autor        : one30
  * @Date         : 2020-11-11 21:51:47
- * @LastEditTime : 2021-01-20 22:58:22
+ * @LastEditTime : 2021-02-21 02:23:15
  * @FilePath     : /src/sm4_bs256.c
  */
 #include <string.h>
@@ -134,12 +134,9 @@ void sm4_bs256_ecb_encrypt(uint8_t* outputb,uint8_t* inputb,int size,__m256i (*r
                 t = _mm_shuffle_epi8(in[i],vindex_swap);
                 _mm_storeu_si128(input_space+i,t);
             }
+
             sm4_bs256_enc(input_space,output_space,rk);
-            // for(int i=0; i<(size+16)/32; i++)
-            // {
-            //     t2 = _mm256_shuffle_epi8(output_space[i],vindex_swap2);
-            //     _mm256_storeu_si256(out+i,t2);          
-            // }
+
             __m128i* out_t = (__m128i*)out;
             for(int i=0; i<size/16; i++)
             {
@@ -171,77 +168,80 @@ void sm4_bs256_ecb_encrypt(uint8_t* outputb,uint8_t* inputb,int size,__m256i (*r
     }
 }
 
-// void sm4_bs512_ecb_encrypt(uint8_t* outputb,uint8_t* inputb,int size,__m512i (*rk)[32]){
-//     __m512i output_space[BLOCK_SIZE];
-//     __m128i input_space[BLOCK_SIZE*4];
-//     __m128i state[512];
-//     __m128i t;
-//     __m512i t2;
-//     //the masking for shuffle the data
-//     __m128i vindex_swap = _mm_setr_epi8(
-// 		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
-// 	);
-//     __m256i vindex_swap2 = _mm256_setr_epi8(
-// 		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
-//         7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
-// 	);
-//     __m512i vindex_swap3 = _mm512_set_epi8(
-// 		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
-//         7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
-//         7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
-//         7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
-// 	);
+void sm4_bs512_ecb_encrypt(uint8_t* outputb,uint8_t* inputb,int size,__m512i (*rk)[32]){
+    __m512i output_space[BLOCK_SIZE];
+    __m128i input_space[BLOCK_SIZE*4];
+    __m128i state[512];
+    __m128i t;
+    __m512i t2;
+    //the masking for shuffle the data
+    __m128i vindex_swap = _mm_setr_epi8(
+		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
+	);
+    __m256i vindex_swap2 = _mm256_setr_epi8(
+		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
+        7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
+	);
+    __m512i vindex_swap3 = _mm512_set_epi8(
+		7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
+        7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
+        7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8,
+        7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8
+	);
 
-//     memset(outputb,0,size);
-//     __m512i* out = (__m512i*)outputb;
-//     __m128i* in = (__m128i*)inputb;
+    memset(outputb,0,size);
+    __m512i* out = (__m512i*)outputb;
+    __m128i* in = (__m128i*)inputb;
 
-//     while(size > 0)
-//     {
-//         if(size < BS_BLOCK_SIZE)
-//         {
-//             memset(input_space,0,BS_BLOCK_SIZE);
-//             for(int i=0; i<size/16; i++)
-//             {
-//                 t = _mm_shuffle_epi8(in[i],vindex_swap);
-//                 _mm_storeu_si128(input_space+i,t);
-//             }
-//             sm4_bs256_enc(input_space,output_space,rk);
-//             // for(int i=0; i<(size+16)/32; i++)
-//             // {
-//             //     t2 = _mm256_shuffle_epi8(output_space[i],vindex_swap2);
-//             //     _mm256_storeu_si256(out+i,t2);          
-//             // }
-//             __m128i* out_t = (__m128i*)out;
-//             for(int i=0; i<size/16; i++)
-//             {
-//                 t = _mm_shuffle_epi8(input_space[i],vindex_swap);
-//                 _mm_storeu_si128(out_t,t);
-//                 out_t++;
-//             }
-//             size = 0;
-//             //out += size;
-//         }
-//         else
-//         {
-//             memmove(state,inputb,BS_BLOCK_SIZE);
-//             for(int i=0; i<BLOCK_SIZE*2; i++){
-//                 t = _mm_shuffle_epi8(in[i],vindex_swap);
-//                 _mm_storeu_si128(input_space+i,t);
-//             }
-//             sm4_bs256_enc(input_space,output_space,rk);
-//             for(int i=0; i<BLOCK_SIZE; i++)
-//             {
-//                 t2 = _mm256_shuffle_epi8(output_space[i],vindex_swap2);
-//                 _mm256_storeu_si256(out+i,t2);          
-//             }
-//             size -= BS_BLOCK_SIZE;
-//             out += BLOCK_SIZE;
-//             in += BLOCK_SIZE*2;
-//         }
+    while(size > 0)
+    {
+        if(size < BS512_BLOCK_SIZE)
+        {
+            memset(input_space,0,BS512_BLOCK_SIZE);
+            for(int i=0; i<size/16; i++)
+            {
+                t = _mm_shuffle_epi8(in[i],vindex_swap);
+                _mm_storeu_si128(input_space+i,t);
+            }
+            
+            sm4_bs512_enc(input_space,output_space,rk);
+
+
+            // for(int i=0; i<(size+16)/32; i++)
+            // {
+            //     t2 = _mm256_shuffle_epi8(output_space[i],vindex_swap2);
+            //     _mm256_storeu_si256(out+i,t2);          
+            // }
+            __m128i* out_t = (__m128i*)out;
+            for(int i=0; i<size/16; i++)
+            {
+                t = _mm_shuffle_epi8(input_space[i],vindex_swap);
+                _mm_storeu_si128(out_t,t);
+                out_t++;
+            }
+            size = 0;
+            //out += size;
+        }
+        else
+        {
+            memmove(state,inputb,BS512_BLOCK_SIZE);
+            for(int i=0; i<BLOCK_SIZE*4; i++){
+                t = _mm_shuffle_epi8(in[i],vindex_swap);
+                _mm_storeu_si128(input_space+i,t);
+            }
+            sm4_bs512_enc(input_space,output_space,rk);
+            for(int i=0; i<BLOCK_SIZE; i++)
+            {
+                t2 = _mm512_shuffle_epi8(output_space[i],vindex_swap3);
+                _mm512_storeu_si512(out+i,t2);          
+            }
+            size -= BS512_BLOCK_SIZE;
+            out += BLOCK_SIZE;
+            in += BLOCK_SIZE*4;
+        }
         
-//     }
-// }
+    }
+}
 
 static void INC_CTR(uint8_t * ctr, uint8_t i)
 {
@@ -615,6 +615,17 @@ void BS_TRANS_128x256(__m128i* M,__m256i* N){
             }
         }      
     }
+
+    // uint64_t result[4];
+    // for(int j=0; j<128; j++)
+    // {
+    //     _mm256_store_si256((__m256i*)result,N[j]);
+    //     for(int k=0; k<4; k++)
+    //     {
+    //         printf("%016llx ",result[k]);
+    //     }
+    //     printf("\n");
+    // }
 }
 
 void BS_TRANS_VER_128x256(__m256i* N,__m128i* M){
@@ -712,6 +723,19 @@ void BS_TRANS_VER_128x256(__m256i* N,__m128i* M){
         // test[i] = t[0];
         // test[128+i] = t[1];         
     }
+
+    // uint64_t result[2];
+    // printf("ver_transform:\n");
+    // for(int j=0; j<256; j++)
+    // {
+    //     //_mm512_store_si512((__m512i*)result,N[j]);
+    //     _mm_store_si128((__m128i*)result,M[j]);
+    //     for(int k=0; k<2; k++)
+    //     {
+    //         printf("%016llx ",result[k]);
+    //     }
+    //     printf("\n");
+    // }
 }
 
 void BS_TRANS_128x128(__m128i* M,__m128i* N){
@@ -821,7 +845,8 @@ void BS_TRANS2_128x512(__m128i* M,__m512i* N){
         _mm_store_si128((__m128i*)b,N2[i]);
         _mm_store_si128((__m128i*)c,N3[i]);
         _mm_store_si128((__m128i*)d,N4[i]);
-        N[i] = _mm512_set_epi64(a[0],a[1],b[0],b[1],c[0],c[1],d[0],d[1]);
+        //N[i] = _mm512_set_epi64(a[0],a[1],b[0],b[1],c[0],c[1],d[0],d[1]);
+        N[i] = _mm512_set_epi64(d[1],d[0],c[1],c[0],b[1],b[0],a[1],a[0]);
     }
     
     // uint64_t result[8];
@@ -850,10 +875,10 @@ void BS_TRANS2_VER_128x512(__m512i* N,__m128i* M){
     for(int i = 0; i < 128; i++)
     {
         _mm512_store_epi64((__m512i*)temp,N[i]);
-        N1[i] = _mm_set_epi64(temp[0],temp[1]);
-        N2[i]= _mm_set_epi64(temp[2],temp[3]);
-        N3[i] = _mm_set_epi64(temp[4],temp[5]);  
-        N4[i] = _mm_set_epi64(temp[6],temp[7]);
+        N1[i] = _mm_set_epi64(temp[1],temp[0]);
+        N2[i]= _mm_set_epi64(temp[3],temp[2]);
+        N3[i] = _mm_set_epi64(temp[5],temp[4]);  
+        N4[i] = _mm_set_epi64(temp[7],temp[6]);
     }
     
     BS_TRANS_128x128(N1,M1);
@@ -884,6 +909,7 @@ void BS_TRANS2_VER_128x512(__m512i* N,__m128i* M){
     // {
     //     //_mm512_store_si512((__m512i*)result,N[j]);
     //     _mm_store_si128((__m128i*)result,M[j]);
+    //     printf("%d:",j);
     //     for(int k=0; k<2; k++)
     //     {
     //         printf("%016llx ",result[k]);
@@ -1097,17 +1123,37 @@ void BS_iteration(__m256i* N,__m256i BS_RK_256[32][32])
     __m256i N_temp[128];
     __m256i temp_256[36][32];
 
-    //printf("test init_buf[][] 4 round:\n");
-    for(int j = 0; j < 4; j++)//bingo 256bit
+    for(int j = 0; j < 4; j++)
     {
         for(int k = 0; k < 32; k++)
         {
             buf_256[j][k] = N[32*j+k];//load data
         }     
     }
+
+    // for(int i=0; i<32; i++)
+    // {
+    //     for(int j=0; j<4; j++)
+    //     {
+    //             for(int m = 0; m < 4; m++)
+    //             {
+    //                 printf("buf[%d][%d][%d]=%016llx",i,j,m,buf_256[i][j][m]);
+    //             }
+    //             printf("\n");
+    //     }
+    // }
         
     while(i < 32)//32轮迭代计算
     {
+        // for(int j=0; j<4; j++)
+        // {
+        //         for(int m = 0; m < 4; m++)
+        //         {
+        //             printf("buf[%d][%d][%d]=%016llx",i,j,m,buf_256[i][j][m]);
+        //         }
+        //         printf("\n");
+        // }
+
         for(int j = 0; j < 32; j++)//4道32bit数据操作:
         {
             buf_256[4+i][j]= buf_256[i+1][j] ^ buf_256[i+2][j] ^ buf_256[i+3][j] ^ BS_RK_256[i][j];
@@ -1136,6 +1182,104 @@ void BS_iteration(__m256i* N,__m256i BS_RK_256[32][32])
         }
     }
 
+    // for(int i=0; i<4; i++)
+    //     for(int j=0; j<32; j++)
+    //     {
+    //             for(int m = 0; m < 4; m++)
+    //             {
+    //                 printf("buf[%d][%d][%d]=%016llx",i,j,m,buf_256[i][j][m]);
+    //             }
+    //             printf("\n");
+    //     }
+
+}
+
+void BS512_iteration(__m512i* N, __m512i BS_RK_512[32][32])
+{
+    int i = 0;
+    uint64_t t1 , t2;
+    __m512i buf_512[36][32];
+    __m512i N_temp[128];
+    __m512i temp_512[36][32];
+
+    for(int j = 0; j < 4; j++)
+    {
+        for(int k = 0; k < 32; k++)
+        {
+            buf_512[j][k] = N[32*j+k];//load data
+        }     
+    }
+    //printf("test init_buf[][] end:\n");
+
+    // for(int i=0; i<32; i++)
+    // {
+    //     for(int j=0; j<4; j++)
+    //     {
+    //             for(int m = 0; m < 4; m++)
+    //             {
+    //                 printf("buf[%d][%d][%d]=%016llx",i,j,m,buf_512[i][j][m]);
+    //             }
+    //             printf("\n");
+    //     }
+    // }
+
+    while(i < 32)//32轮迭代计算
+    {
+        // for(int j=0; j<4; j++)
+        // {
+        //         for(int m = 0; m < 4; m++)
+        //         {
+        //             printf("buf[%d][%d][%d]=%016llx",i,j,m,buf_512[i][j][m]);
+        //         }
+        //         printf("\n");
+        // }
+
+        for(int j = 0; j < 32; j++)//4道32bit数据操作:
+        {
+            buf_512[4+i][j]= buf_512[i+1][j] ^ buf_512[i+2][j] ^ buf_512[i+3][j] ^ BS_RK_512[i][j];
+            // _mm256_store_si256((__m256i*)buf[4+i][j],buf_256[4+i][j]);
+            // for(int m = 0; m < 4; m++)
+            // {
+            //     printf("buf[%d][%d][%d]=%016llx",i,j,m,buf[4+i][j][m]);
+            // }
+            // printf("\n");
+        }
+
+
+        //printf("\ttest sbox:\n");
+        Sbox_BS512(i,buf_512);//bingo256 合成置换T的非线性变换
+        
+        //printf("\tafter shift\n");
+        for(int j = 0; j < 32; j++)//bingo256 4道32bit数据操作:合成置换T的线性变换L
+        {
+            // printf("buf[%d][%d]=%016llx ",i+4,j,buf[4+i][j]);
+            // printf("buf<<<2=%016llx ",buf[4+i][(j+2)]);
+            // printf("buf<<<2=%016llx ",buf[4+i][(j+10)]);
+            // printf("buf<<<2=%016llx ",buf[4+i][(j+18)]);
+            // printf("buf<<<2=%016llx ",buf[4+i][(j+24)]);
+            temp_512[4+i][j]= buf_512[4+i][j] ^ buf_512[4+i][(j+2)%32] ^ buf_512[4+i][(j+10)%32] ^ buf_512[4+i][(j+18)%32] ^ buf_512[4+i][(j+24)%32];
+            // printf("temp[%d][%d]=%016llx ",i+4,j,temp[4+i][j]);
+            // if((j+1)%4==0) printf("\n");
+        }
+        for(int j = 0; j < 32; j++)//4道32bit数据操作
+        {
+            buf_512[4+i][j]= temp_512[i+4][j] ^ buf_512[i][j];
+            //[4+i][j] = _mm256_xor_si256(temp_256[i+4][j],buf_256[i][j]);
+        }        
+        i++;
+    }
+
+    for(int j = 0; j < 4; j++)//反序计算
+    {
+        for(int k = 0; k < 32; k++)
+        {
+            //BS_N_256[32*j+k] = buf_256[35-j][k];
+            // _mm256_store_si256((__m256i*)BS_N[32*j+k],buf_256[35-j][k]);
+            //_mm256_store_si256((__m256i*)N[32*j+k],buf_256[35-j][k]);
+            N[32*j+k] = buf_512[35-j][k];
+        }
+    }
+
 }
 
 void S_box(int round,__m256i buf_256[36][32])
@@ -1161,12 +1305,42 @@ void S_box(int round,__m256i buf_256[36][32])
 
 }
 
+void Sbox_BS512(int round,__m512i buf_512[36][32])
+{
+    bits_512 sm4;
+
+    for(int i = 0; i<4; i++)
+    {
+        sm4.b7 = buf_512[round+4][i*8];
+        sm4.b6 = buf_512[round+4][i*8+1];
+        sm4.b5 = buf_512[round+4][i*8+2];
+        sm4.b4 = buf_512[round+4][i*8+3];
+        sm4.b3 = buf_512[round+4][i*8+4];
+        sm4.b2 = buf_512[round+4][i*8+5];
+        sm4.b1 = buf_512[round+4][i*8+6];
+        sm4.b0 = buf_512[round+4][i*8+7];
+
+        Sm4_BS512_BoolFun(sm4,&buf_512[round+4][i*8+7],&buf_512[round+4][i*8+6],&buf_512[round+4][i*8+5],&buf_512[round+4][i*8+4],
+            &buf_512[round+4][i*8+3],&buf_512[round+4][i*8+2],&buf_512[round+4][i*8+1],&buf_512[round+4][i*8]);
+
+    }
+    //for(int )
+
+}
+
 
 void sm4_bs256_enc(__m128i M[256],__m256i N[128],__m256i rk[32][32])
 {
     BS_TRANS_128x256(M,N);
     BS_iteration(N,rk);
     BS_TRANS_VER_128x256(N,M);
+}
+
+void sm4_bs512_enc(__m128i* M,__m512i* N,__m512i rk[32][32])
+{
+    BS_TRANS2_128x512(M,N);
+    BS512_iteration(N,rk);
+    BS_TRANS2_VER_128x512(N,M);
 }
 
 //899gatesmake
@@ -1232,6 +1406,144 @@ void sm4_bs256_enc(__m128i M[256],__m256i N[128],__m256i rk[32][32])
 //130 gates - lwaes_isa
 void Sm4_BoolFun(bits in, bit_t *out0, bit_t *out1, bit_t *out2, bit_t *out3, bit_t *out4, bit_t *out5, bit_t *out6, bit_t *out7){
         bit_t y_t[21], t_t[8], t_m[46], y_m[18], t_b[30];
+  	    y_t[18] = in.b2 ^in.b6;
+		t_t[ 0] = in.b3 ^in.b4;
+		t_t[ 1] = in.b2 ^in.b7;
+		t_t[ 2] = in.b7 ^y_t[18];
+		t_t[ 3] = in.b1 ^t_t[ 1];
+		t_t[ 4] = in.b6 ^in.b7;
+		t_t[ 5] = in.b0 ^y_t[18];
+		t_t[ 6] = in.b3 ^in.b6;
+		y_t[10] = in.b1 ^y_t[18];
+		y_t[ 0] = in.b5 ^~ y_t[10];
+		y_t[ 1] = t_t[ 0] ^t_t[ 3];
+		y_t[ 2] = in.b0 ^t_t[ 0];
+		y_t[ 4] = in.b0 ^t_t[ 3];
+		y_t[ 3] = in.b3 ^y_t[ 4];
+		y_t[ 5] = in.b5 ^t_t[ 5];
+		y_t[ 6] = in.b0 ^~ in.b1;
+		y_t[ 7] = t_t[ 0] ^~ y_t[10];
+		y_t[ 8] = t_t[ 0] ^t_t[ 5];
+		y_t[ 9] = in.b3;
+		y_t[11] = t_t[ 0] ^t_t[ 4];
+		y_t[12] = in.b5 ^t_t[ 4];
+		y_t[13] = in.b5 ^~ y_t[ 1];
+		y_t[14] = in.b4 ^~ t_t[ 2];
+		y_t[15] = in.b1 ^~ t_t[ 6];
+		y_t[16] = in.b0 ^~ t_t[ 2];
+		y_t[17] = t_t[ 0] ^~ t_t[ 2];
+		y_t[19] = in.b5 ^~ y_t[14];
+		y_t[20] = in.b0 ^t_t[ 1];
+
+    //The shared non-linear middle part for AES, AES^-1, and SM4
+  	t_m[ 0] = y_t[ 3] ^	 y_t[12];
+		t_m[ 1] = y_t[ 9] &	 y_t[ 5];
+		t_m[ 2] = y_t[17] &	 y_t[ 6];
+		t_m[ 3] = y_t[10] ^	 t_m[ 1];
+		t_m[ 4] = y_t[14] &	 y_t[ 0];
+		t_m[ 5] = t_m[ 4] ^	 t_m[ 1];
+		t_m[ 6] = y_t[ 3] &	 y_t[12];
+		t_m[ 7] = y_t[16] &	 y_t[ 7];
+		t_m[ 8] = t_m[ 0] ^	 t_m[ 6];
+		t_m[ 9] = y_t[15] &	 y_t[13];
+		t_m[10] = t_m[ 9] ^	 t_m[ 6];
+		t_m[11] = y_t[ 1] &	 y_t[11];
+		t_m[12] = y_t[ 4] &	 y_t[20];
+		t_m[13] = t_m[12] ^	 t_m[11];
+		t_m[14] = y_t[ 2] &	 y_t[ 8];
+		t_m[15] = t_m[14] ^	 t_m[11];
+		t_m[16] = t_m[ 3] ^	 t_m[ 2];
+		t_m[17] = t_m[ 5] ^	 y_t[18];
+		t_m[18] = t_m[ 8] ^	 t_m[ 7];
+		t_m[19] = t_m[10] ^	 t_m[15];
+		t_m[20] = t_m[16] ^	 t_m[13];
+		t_m[21] = t_m[17] ^	 t_m[15];
+		t_m[22] = t_m[18] ^	 t_m[13];
+		t_m[23] = t_m[19] ^	 y_t[19];
+		t_m[24] = t_m[22] ^	 t_m[23];
+		t_m[25] = t_m[22] &	 t_m[20];
+		t_m[26] = t_m[21] ^	 t_m[25];
+		t_m[27] = t_m[20] ^	 t_m[21];
+		t_m[28] = t_m[23] ^	 t_m[25];
+		t_m[29] = t_m[28] &	 t_m[27];
+		t_m[30] = t_m[26] &	 t_m[24];
+		t_m[31] = t_m[20] &	 t_m[23];
+		t_m[32] = t_m[27] &	 t_m[31];
+		t_m[33] = t_m[27] ^	 t_m[25];
+		t_m[34] = t_m[21] &	 t_m[22];
+		t_m[35] = t_m[24] &	 t_m[34];
+		t_m[36] = t_m[24] ^	 t_m[25];
+		t_m[37] = t_m[21] ^	 t_m[29];
+		t_m[38] = t_m[32] ^	 t_m[33];
+		t_m[39] = t_m[23] ^	 t_m[30];
+		t_m[40] = t_m[35] ^	 t_m[36];
+		t_m[41] = t_m[38] ^	 t_m[40];
+		t_m[42] = t_m[37] ^	 t_m[39];
+		t_m[43] = t_m[37] ^	 t_m[38];
+		t_m[44] = t_m[39] ^	 t_m[40];
+		t_m[45] = t_m[42] ^	 t_m[41];
+		y_m[ 0] = t_m[38] &	 y_t[ 7];
+		y_m[ 1] = t_m[37] &	 y_t[13];
+		y_m[ 2] = t_m[42] &	 y_t[11];
+		y_m[ 3] = t_m[45] &	 y_t[20];
+		y_m[ 4] = t_m[41] &	 y_t[ 8];
+		y_m[ 5] = t_m[44] &	 y_t[ 9];
+		y_m[ 6] = t_m[40] &	 y_t[17];
+		y_m[ 7] = t_m[39] &	 y_t[14];
+		y_m[ 8] = t_m[43] &	 y_t[ 3];
+		y_m[ 9] = t_m[38] &	 y_t[16];
+		y_m[10] = t_m[37] &	 y_t[15];
+		y_m[11] = t_m[42] &	 y_t[ 1];
+		y_m[12] = t_m[45] &	 y_t[ 4];
+		y_m[13] = t_m[41] &	 y_t[ 2];
+		y_m[14] = t_m[44] &	 y_t[ 5];
+		y_m[15] = t_m[40] &	 y_t[ 6];
+		y_m[16] = t_m[39] &	 y_t[ 0];
+		y_m[17] = t_m[43] &	 y_t[12];
+
+  //bottom(outer) linear layer for sm4
+  	t_b[ 0] = y_m[ 4] ^	 y_m[ 7];
+		t_b[ 1] = y_m[13] ^	 y_m[15];
+		t_b[ 2] = y_m[ 2] ^	 y_m[16];
+		t_b[ 3] = y_m[ 6] ^	 t_b[ 0];
+		t_b[ 4] = y_m[12] ^	 t_b[ 1];
+		t_b[ 5] = y_m[ 9] ^	 y_m[10];
+		t_b[ 6] = y_m[11] ^	 t_b[ 2];
+		t_b[ 7] = y_m[ 1] ^	 t_b[ 4];
+		t_b[ 8] = y_m[ 0] ^	 y_m[17];
+		t_b[ 9] = y_m[ 3] ^	 y_m[17];
+		t_b[10] = y_m[ 8] ^	 t_b[ 3];
+		t_b[11] = t_b[ 2] ^	 t_b[ 5];
+		t_b[12] = y_m[14] ^	 t_b[ 6];
+		t_b[13] = t_b[ 7] ^	 t_b[ 9];
+		t_b[14] = y_m[ 0] ^	 y_m[ 6];
+		t_b[15] = y_m[ 7] ^	 y_m[16];
+		t_b[16] = y_m[ 5] ^	 y_m[13];
+		t_b[17] = y_m[ 3] ^	 y_m[15];
+		t_b[18] = y_m[10] ^	 y_m[12];
+		t_b[19] = y_m[ 9] ^	 t_b[ 1];
+		t_b[20] = y_m[ 4] ^	 t_b[ 4];
+		t_b[21] = y_m[14] ^	 t_b[ 3];
+		t_b[22] = y_m[16] ^	 t_b[ 5];
+		t_b[23] = t_b[ 7] ^	 t_b[14];
+		t_b[24] = t_b[ 8] ^	 t_b[11];
+		t_b[25] = t_b[ 0] ^	 t_b[12];
+		t_b[26] = t_b[17] ^	 t_b[ 3];
+		t_b[27] = t_b[18] ^	 t_b[10];
+		t_b[28] = t_b[19] ^	 t_b[ 6];
+		t_b[29] = t_b[ 8] ^	 t_b[10];
+		*out0 = t_b[11] ^~ t_b[13];
+		*out1 = t_b[15] ^~ t_b[23];
+		*out2 = t_b[20] ^	 t_b[24];
+		*out3 = t_b[16] ^	 t_b[25];
+		*out4 = t_b[26] ^~ t_b[22];
+		*out5 = t_b[21] ^	 t_b[13];
+		*out6 = t_b[27] ^~ t_b[12];
+		*out7 = t_b[28] ^~ t_b[29];
+}
+
+void Sm4_BS512_BoolFun(bits_512 in, __m512i *out0, __m512i *out1, __m512i *out2, __m512i *out3, __m512i *out4, __m512i *out5, __m512i *out6, __m512i *out7){
+        __m512i y_t[21], t_t[8], t_m[46], y_m[18], t_b[30];
   	    y_t[18] = in.b2 ^in.b6;
 		t_t[ 0] = in.b3 ^in.b4;
 		t_t[ 1] = in.b2 ^in.b7;

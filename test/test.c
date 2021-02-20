@@ -39,30 +39,30 @@ void sm4_bs256_ecb_test()
     // printf("SM4 ECB 4 block Accuracy Test end:\n\n");
 
 
-    uint8_t plain[16*256];
-    uint8_t *p = (uint8_t *)plain;
-    uint8_t out_plain[16*256];
-    for(int i=0; i<256; i++)
-    {
-        memcpy(p,pt_vector,16);
-        p += 16;
-    }
-    // printf("SM4 ECB 256 block:\n");
-    // //sm4_bs256_ecb_encrypt(out_plain,plain,4112,key_vector);
-    // sm4_bs256_ecb_encrypt(out_plain,plain,4096,rk);
-    // printf("SM4 ECB 256 block end:\n");
+    // uint8_t plain[16*256];
+    // uint8_t *p = (uint8_t *)plain;
+    // uint8_t out_plain[16*256];
+    // for(int i=0; i<256; i++)
+    // {
+    //     memcpy(p,pt_vector,16);
+    //     p += 16;
+    // }
+    // // printf("SM4 ECB 256 block:\n");
+    // // //sm4_bs256_ecb_encrypt(out_plain,plain,4112,key_vector);
+    // // sm4_bs256_ecb_encrypt(out_plain,plain,4096,rk);
+    // // printf("SM4 ECB 256 block end:\n");
 
 
-    printf("SM4-AVX2-bitslice ECB Speed Test:\n");
-    uint8_t *plainn = (uint8_t *)malloc(16*(1<<15));
-    uint8_t *c = plainn;
-    benchmark_sm4_bs_ecb_encrypt(plainn,c,1*16,rk);
-    benchmark_sm4_bs_ecb_encrypt(plainn,c,4*16,rk);
-    benchmark_sm4_bs_ecb_encrypt(plainn,c,256,rk);
-    benchmark_sm4_bs_ecb_encrypt(plainn,c,1024,rk);
-    benchmark_sm4_bs_ecb_encrypt(plainn,c,8192,rk);
-    benchmark_sm4_bs_ecb_encrypt(plainn,c,16384,rk);
-    printf("SM4-AVX2-bitslice ECB Speed Test end!\n");
+    // printf("SM4-AVX2-bitslice ECB Speed Test:\n");
+    // uint8_t *plainn = (uint8_t *)malloc(16*(1<<15));
+    // uint8_t *c = plainn;
+    // benchmark_sm4_bs_ecb_encrypt(plainn,c,1*16,rk);
+    // benchmark_sm4_bs_ecb_encrypt(plainn,c,4*16,rk);
+    // benchmark_sm4_bs_ecb_encrypt(plainn,c,256,rk);
+    // benchmark_sm4_bs_ecb_encrypt(plainn,c,1024,rk);
+    // benchmark_sm4_bs_ecb_encrypt(plainn,c,8192,rk);
+    // benchmark_sm4_bs_ecb_encrypt(plainn,c,16384,rk);
+    // printf("SM4-AVX2-bitslice ECB Speed Test end!\n");
     
 }
 
