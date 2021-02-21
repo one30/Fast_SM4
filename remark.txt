@@ -51,3 +51,17 @@ SM4_encrypt>>> blocks: 64, time: 0.000017 s, speed: 471.316791 Mb/s
 SM4_encrypt>>> blocks: 512, time: 0.000072 s, speed: 873.704297 Mb/s
 SM4_encrypt>>> blocks: 1024, time: 0.000143 s, speed: 873.950473 Mb/s
 SM4-AVX2-bitslice GCM Speed Test end!
+
+20210221 测试avx512-ecb模式 解决转置中的bug
+bitslice!
+SM4 ECB 1 block Accuracy Test.:
+cipher text: 
+68 1e df 34 d2 06 96 5e 86 b3 e9 4f 53 6e 42 46 
+SM4 ECB 1 block encrypt Test passed!
+SM4 ECB 1 block Accuracy Test end:
+
+SM4 ECB 1 block Accuracy Test.:
+cipher text: 
+68 1e df 34 d2 06 96 5e 86 b3 e9 4f 53 6e 42 46 
+SM4 ECB 1 block encrypt Test passed!
+SM4 ECB 1 block Accuracy Test end:
